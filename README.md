@@ -40,10 +40,11 @@ client/
     src/protocol/packets.js            codec paket
     src/protocol/session.js            mesin sesi login
     index.html, src/main.js ...        prototipe dunia 2D offline (dari tahap sebelumnya)
-  tools/                               konverter .rttex -> PNG
+  tools/                               konverter .rttex -> PNG, dev-server.ts (dev server satu-origin)
   tests/                               tes codec, sesi, fisika
 docs/
   DEPLOY.md                            reverse proxy (Caddy) dan variabel lingkungan
+how-to.md                              panduan dari nol (unduhan, pemasangan, menjalankan, masalah umum)
   SECURITY-NOTES.md                    temuan keamanan di GrowServer dan batas perlindungan gateway
 ```
 
@@ -63,22 +64,25 @@ docs/
 
    Gateway mendengar di port `17903` (port `17902` sudah dipakai server CDN GrowServer).
 
-3. Layani klien dan buka halaman login:
+3. Jalankan dev server satu-origin (file statis + proxy login + proxy WebSocket) di terminal lain:
 
    ```bash
-   python3 -m http.server 8080 --directory client/public
-   # http://localhost:8080/login.html?ws=ws://localhost:17903&login=http://localhost:17901
+   bun client/tools/dev-server.ts
+   # buka http://localhost:8080/login.html
    ```
 
-   Login dengan akun GrowID yang sudah terdaftar. Hasil yang diharapkan: status "Terhubung sebagai ...".
-   Kalau macet, kolom log menampilkan pesan terakhir dari server. Untuk produksi, layani semuanya dari
-   satu domain lewat Caddy (`docs/DEPLOY.md`), karena login HTTP lintas-origin butuh CORS yang tidak
-   disediakan GrowServer.
+   Login dengan akun GrowID yang sudah terdaftar (daftar dulu di `http://localhost:17901/register`).
+   Hasil yang diharapkan: status "Terhubung sebagai ...". Kalau macet, kolom log menampilkan pesan
+   terakhir dari server. Server login GrowServer tidak mengirim header CORS, jadi halaman **harus**
+   dilayani lewat dev server ini (atau Caddy di produksi), bukan lewat `python -m http.server`.
+
+Panduan lengkap dari nol, termasuk apa yang perlu dan tidak perlu diunduh: **[how-to.md](how-to.md)**.
 
 ## Tes
 
 ```bash
 node --test client/tests/*.test.mjs                       # codec, sesi, fisika (tanpa dependensi)
+bun test client/tests/dev-server.test.ts                  # dev server: proxy login dan WebSocket
 bun test server/tests/ws-gateway.test.ts                  # gateway dengan server Bun dan WebSocket sungguhan
 GROWSERVER_DIR=/path/ke/GrowServer-yang-sudah-dipatch \
   bun test server/tests/compat.test.ts                    # kecocokan dengan kode asli GrowServer

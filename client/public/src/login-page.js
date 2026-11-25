@@ -1,10 +1,12 @@
 // Halaman login: POST kredensial ke endpoint login GrowServer, lalu jalankan LoginSession.
 //
-// Konfigurasi lewat query string (untuk pengembangan lokal):
-//   ?ws=ws://localhost:17903     alamat gateway WebSocket (default: host yang sama)
-//   ?login=http://localhost:17901 alamat server login HTTP (default: host yang sama)
-//   ?port=17091                  port game server awal
-// Di produksi, layani semuanya dari satu domain lewat reverse proxy (lihat docs/DEPLOY.md).
+// Secara bawaan semua permintaan (login dan WebSocket) memakai host yang sama dengan halaman ini.
+// Lokal: jalankan `bun client/tools/dev-server.ts`. Produksi: reverse proxy (docs/DEPLOY.md).
+// Server login GrowServer tidak mengirim CORS, jadi ?login= ke origin lain hanya berfungsi kalau
+// Anda menambahkan CORS sendiri. Query string (opsional):
+//   ?ws=ws://host:17903   alamat gateway WebSocket
+//   ?login=http://host    alamat server login HTTP
+//   ?port=17091           port game server awal
 
 import { LoginSession } from "./protocol/session.js";
 
