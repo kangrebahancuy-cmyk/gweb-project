@@ -1,0 +1,29 @@
+{
+  "_catatan": "Semua aset dirujuk dari sini. Untuk mengganti ke pixel art buatan sendiri, cukup ubah path 'atlas' dan 'player' dan atur col/row sesuai gambar Anda. Kode tidak perlu diubah.",
+  "tileSize": 32,
+  "atlases": {
+    "tiles1": "assets/gen/tiles_page1.png"
+  },
+  "tiles": {
+    "1": { "name": "Tanah",     "atlas": "tiles1", "col": 10, "row": 22, "solid": true, "hits": 3 },
+    "2": { "name": "Kayu",      "atlas": "tiles1", "col": 2,  "row": 22, "solid": true, "hits": 2 },
+    "3": { "name": "Batu Kali", "atlas": "tiles1", "col": 18, "row": 22, "solid": true, "hits": 4 },
+    "4": { "name": "Batu",      "atlas": "tiles1", "col": 18, "row": 28, "solid": true, "hits": 4 },
+    "5": { "name": "Bata",      "atlas": "tiles1", "col": 10, "row": 28, "solid": true, "hits": 3 },
+    "6": { "name": "Batu Ungu", "atlas": "tiles1", "col": 2,  "row": 28, "solid": true, "hits": 4 },
+    "7": { "name": "Lava",      "atlas": "tiles1", "col": 26, "row": 22, "solid": true, "hits": 5 },
+    "8": { "name": "Bedrock",   "atlas": "tiles1", "col": 26, "row": 28, "solid": true, "hits": -1 }
+  },
+  "player": {
+    "image": "assets/gen/player_head_skin1.png",
+    "frameW": 32,
+    "frameH": 32,
+    "cols": 4,
+    "idleFrame": 0,
+    "walkFrames": [0, 1, 2, 3],
+    "drawOffsetX": -6,
+    "drawOffsetY": -2,
+    "tint": "#e0a878"
+  },
+  "hotbar": [1, 2, 3, 4, 5, 6, 7, 8]
+}

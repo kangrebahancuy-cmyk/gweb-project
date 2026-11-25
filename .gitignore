@@ -1,0 +1,5 @@
+# Aset hasil ekstraksi dari APK (hak cipta pihak lain): jangan di-commit atau di-deploy
+client/public/assets/gen/
+node_modules/
+__pycache__/
+.DS_Store

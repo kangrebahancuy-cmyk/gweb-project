@@ -1,0 +1,22 @@
+diff --git a/src/game/player/auth.ts b/src/game/player/auth.ts
+index b718572..4eb9025 100644
+--- a/src/game/player/auth.ts
++++ b/src/game/player/auth.ts
+@@ -328,13 +328,10 @@ export class PlayerAuth {
+     const checkPlayerId = expectedPlayerId ?? this.metadata.user;
+ 
+     const session = PlayerAuth.transferTokens.get(checkToken);
+-    if (!session) {
+-      if ((checkToken === "0" || checkToken === "" || checkToken === "undefined") && this.metadata.tankIDName) {
+-        this.isAuthenticated = true;
+-        return true;
+-      }
+-      return false;
+-    }
++    // A transfer is only valid with a token this server issued. Previously the
++    // tokens "0", "" and "undefined" were accepted for any tankIDName, which let
++    // a client log in as any account without a session.
++    if (!session) return false;
+ 
+     if (Date.now() > session.expiresAt) {
+       PlayerAuth.transferTokens.delete(checkToken);

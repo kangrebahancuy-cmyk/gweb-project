@@ -1,0 +1,11 @@
+{
+  "name": "gweb-project",
+  "private": true,
+  "type": "module",
+  "description": "Klien web untuk GrowServer: gateway WebSocket + codec paket + sesi login",
+  "scripts": {
+    "test:client": "node --test client/tests/*.test.mjs",
+    "test:gateway": "bun test server/tests/ws-gateway.test.ts",
+    "test:compat": "bun test server/tests/compat.test.ts"
+  }
+}

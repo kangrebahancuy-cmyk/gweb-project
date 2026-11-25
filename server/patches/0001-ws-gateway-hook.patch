@@ -1,0 +1,59 @@
+diff --git a/src/game/index.ts b/src/game/index.ts
+index 9c15976..d01825c 100644
+--- a/src/game/index.ts
++++ b/src/game/index.ts
+@@ -7,6 +7,37 @@ import { worldManager } from "./world/world-manager";
+ import { registerGameConsoleCommands } from "../cli/game-commands";
+ import { loadStoreCatalog } from "./network/store-catalog";
+ import { startServerTicks, stopServerTicks } from "./server-tick";
++import { startWsGateway, type GatewayHandle, type PeerEmitter } from "../services/ws-gateway";
++
++let wsGateway: GatewayHandle | null = null;
++
++/**
++ * Starts the WebSocket gateway for browser clients. Environment:
++ *   WS_GATEWAY_PORT     default 17903, 0 disables
++ *   WS_GATEWAY_HOST     default 0.0.0.0; use 127.0.0.1 when a reverse proxy runs on the same host
++ *   WS_ALLOWED_ORIGINS  comma separated, e.g. https://game.example.com (same-host origins are always allowed)
++ *   WS_TRUST_PROXY=1    trust X-Forwarded-For (only when the gateway is reachable solely through your proxy)
++ */
++function startWebGateway(): void {
++  const port = Number(process.env.WS_GATEWAY_PORT ?? 17903);
++  if (!port) return;
++  const hostname = process.env.WS_GATEWAY_HOST ?? "0.0.0.0";
++  const trustProxy = process.env.WS_TRUST_PROXY === "1";
++  if (trustProxy && hostname === "0.0.0.0") {
++    logger.warn("WS_TRUST_PROXY=1 but the gateway listens on 0.0.0.0: clients can spoof X-Forwarded-For. Set WS_GATEWAY_HOST=127.0.0.1 or firewall the port.");
++  }
++  wsGateway = startWsGateway({
++    port,
++    hostname,
++    allowedOrigins: (process.env.WS_ALLOWED_ORIGINS ?? "")
++      .split(",")
++      .map((s) => s.trim())
++      .filter(Boolean),
++    trustProxy,
++    resolve: (p) => serverManager.getServer(`server-${p}`)?.host.emitter as unknown as PeerEmitter | undefined,
++    logger,
++  });
++}
+ 
+ export async function startGameServer(): Promise<void> {
+   const ports = serverConfig?.game.server_ports ?? [];
+@@ -14,6 +45,7 @@ export async function startGameServer(): Promise<void> {
+   for (const port of ports) {
+     serverManager.addServer(port);
+   }
++  startWebGateway();
+ 
+   await initItems();
+   await loadItemsWiki();
+@@ -62,6 +94,8 @@ export async function shutdownGameServer(): Promise<void> {
+   }
+   // give ENet a moment to deliver the disconnects before the sockets close
+   await new Promise((resolve) => setTimeout(resolve, 500));
++  wsGateway?.stop();
++  wsGateway = null;
+   for (const server of serverManager.getAllServers()) server.stop();
+   await worldManager.saveAll();
+ }

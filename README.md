@@ -1,0 +1,100 @@
+# gweb-project
+
+Klien web untuk server [GrowServer](https://github.com/StileDevs/GrowServer): browser berbicara dengan
+server lewat WebSocket memakai paket Growtopia yang sama persis dengan klien native, jadi seluruh logika
+game (dunia, inventori, database) tetap berjalan di GrowServer tanpa diubah.
+
+```
+Browser (client/)  --WebSocket biner-->  Gateway (server/overlay)  -->  GameServer GrowServer
+   codec paket + sesi login               WebPeer meniru Peer ENet        logika game yang sama
+```
+
+## Status
+
+| Bagian | Status |
+|---|---|
+| Gateway WebSocket untuk GrowServer (`WebPeer`, cek Origin, rate limit, batas koneksi) | selesai, teruji |
+| Codec paket Growtopia di klien (teks, tank 56 byte, variant) | selesai, teruji terhadap encoder asli GrowServer |
+| Sesi login (login -> SuperMain -> ltoken -> OnSendToServer -> transfer) | selesai, teruji end-to-end dengan `PlayerAuth` asli |
+| Halaman login (`client/public/login.html`) | selesai, teruji di Chrome dengan server stub |
+| Parse `items.dat` dan `SEND_MAP_DATA`, render dunia nyata | belum |
+| Gerak, pukul, pasang, chat, inventori, dialog | belum |
+
+**Belum pernah dijalankan terhadap proses GrowServer sungguhan** (dependensinya tidak bisa dipasang di
+lingkungan tempat ini dibuat). Yang dites memakai kode asli GrowServer (`Variant`, `GameUpdatePacket`,
+`PlayerAuth`, `TextParser`) tetapi dengan "lem" `game-server.ts` yang ditiru tanpa database.
+Percobaan pertama di server Anda adalah ujian sebenarnya; lihat "Mencoba" di bawah.
+
+## Struktur
+
+```
+server/
+  overlay/src/services/ws-gateway.ts   gateway WebSocket (disalin ke GrowServer)
+  patches/0001-ws-gateway-hook.patch   menyalakan gateway dari src/game/index.ts
+  patches/0002-require-issued-transfer-token.patch   perbaikan celah login (BACA docs/SECURITY-NOTES.md)
+  apply.sh                             memasang overlay + patch ke salinan GrowServer
+  tests/                               tes gateway dan tes kecocokan dengan kode asli GrowServer
+client/
+  public/                              situs statis (HTML + ES modules, tanpa build)
+    login.html, src/login-page.js      halaman login
+    src/protocol/packets.js            codec paket
+    src/protocol/session.js            mesin sesi login
+    index.html, src/main.js ...        prototipe dunia 2D offline (dari tahap sebelumnya)
+  tools/                               konverter .rttex -> PNG
+  tests/                               tes codec, sesi, fisika
+docs/
+  DEPLOY.md                            reverse proxy (Caddy) dan variabel lingkungan
+  SECURITY-NOTES.md                    temuan keamanan di GrowServer dan batas perlindungan gateway
+```
+
+## Mencoba
+
+1. Pasang gateway ke salinan GrowServer Anda (aman diulang):
+
+   ```bash
+   ./server/apply.sh /path/ke/GrowServer          # tambahkan --no-auth-fix untuk melewati patch 0002
+   ```
+
+2. Jalankan GrowServer seperti biasa, dengan variabel gateway:
+
+   ```bash
+   WS_ALLOWED_ORIGINS=http://localhost:8080 bun run start
+   ```
+
+   Gateway mendengar di port `17903` (port `17902` sudah dipakai server CDN GrowServer).
+
+3. Layani klien dan buka halaman login:
+
+   ```bash
+   python3 -m http.server 8080 --directory client/public
+   # http://localhost:8080/login.html?ws=ws://localhost:17903&login=http://localhost:17901
+   ```
+
+   Login dengan akun GrowID yang sudah terdaftar. Hasil yang diharapkan: status "Terhubung sebagai ...".
+   Kalau macet, kolom log menampilkan pesan terakhir dari server. Untuk produksi, layani semuanya dari
+   satu domain lewat Caddy (`docs/DEPLOY.md`), karena login HTTP lintas-origin butuh CORS yang tidak
+   disediakan GrowServer.
+
+## Tes
+
+```bash
+node --test client/tests/*.test.mjs                       # codec, sesi, fisika (tanpa dependensi)
+bun test server/tests/ws-gateway.test.ts                  # gateway dengan server Bun dan WebSocket sungguhan
+GROWSERVER_DIR=/path/ke/GrowServer-yang-sudah-dipatch \
+  bun test server/tests/compat.test.ts                    # kecocokan dengan kode asli GrowServer
+```
+
+Tes kecocokan dilewati otomatis kalau `GROWSERVER_DIR` tidak diisi; tes penolakan token `0` hanya jalan
+kalau patch 0002 terdeteksi di salinan itu.
+
+## Aset dan hak cipta
+
+Aset resmi Growtopia (dari APK atau CDN `growserver-cache`) milik pemegang hak ciptanya. `.gitignore`
+mengecualikan `client/public/assets/gen/`. Untuk rilis publik, ganti semuanya dengan karya sendiri lewat
+`client/public/manifest.json` (lihat `client/README.md`).
+
+## Langkah berikutnya
+
+1. Unduh dan parse `items.dat` (hash dan alamat CDN sudah diterima dari SuperMain di `session.info`).
+2. Parse `SEND_MAP_DATA` dan render dunia dengan renderer yang ada.
+3. Kirim paket `STATE` (gerak) dan `TILE_CHANGE_REQUEST` (pukul/pasang), terima `SEND_TILE_UPDATE_DATA`.
