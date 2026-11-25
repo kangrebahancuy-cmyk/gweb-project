@@ -28,24 +28,63 @@ const status = (t, cls = "") => {
   $("status").className = cls;
 };
 
-async function fetchLoginToken(growId, password) {
-  const res = await fetch(`${loginBase}/player/growid/login/validate`, {
+async function postJson(path, payload) {
+  const res = await fetch(`${loginBase}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ growId, password, data: "" }),
+    body: JSON.stringify(payload),
     credentials: "omit",
   });
   let body;
   try {
     body = JSON.parse(await res.text());
   } catch {
-    throw new Error("respons login bukan JSON (cek alamat server login)");
+    throw new Error("respons server bukan JSON (cek alamat server login)");
   }
-  if (body.status !== "success" || typeof body.token !== "string" || !body.token) {
-    throw new Error(body.message || "login gagal");
-  }
+  if (body.status !== "success") throw new Error(body.message || "permintaan ditolak oleh server");
+  return body;
+}
+
+async function fetchLoginToken(growId, password) {
+  const body = await postJson("/player/growid/login/validate", { growId, password, data: "" });
+  if (typeof body.token !== "string" || !body.token) throw new Error("server tidak mengirim token");
   return body.token; // sudah berbentuk ltoken (base64) yang dipakai paket login
 }
+
+// Pemeriksaan yang sama dengan server (login-server.ts), supaya salah ketik langsung terlihat.
+export function validateRegistration(growId, password, confirm) {
+  if (growId.length < 3 || growId.length > 18) return "GrowID harus 3-18 karakter";
+  if (!/^[a-zA-Z0-9_]+$/.test(growId)) return "GrowID hanya boleh huruf, angka, dan _";
+  if (password.length < 6) return "Kata sandi minimal 6 karakter";
+  if (password.length > 128) return "Kata sandi maksimal 128 karakter";
+  if (password !== confirm) return "Kata sandi tidak sama";
+  return null;
+}
+
+async function registerAccount(growId, password, confirmPassword) {
+  await postJson("/player/growid/register/validate", { growId, password, confirmPassword, data: "" });
+}
+
+// ---- mode Masuk / Buat akun ----
+let mode = "login";
+function setMode(next, keepLog = false) {
+  mode = next;
+  const reg = mode === "register";
+  $("tab-login").setAttribute("aria-selected", String(!reg));
+  $("tab-register").setAttribute("aria-selected", String(reg));
+  $("confirm").hidden = !reg;
+  $("confirm").required = reg;
+  $("hint").hidden = !reg;
+  $("go").textContent = reg ? "Buat akun dan masuk" : "Masuk";
+  $("title").textContent = reg ? "Buat akun baru" : "Masuk ke server";
+  $("password").autocomplete = reg ? "new-password" : "current-password";
+  if (!keepLog) {
+    status("");
+    $("log").textContent = "";
+  }
+}
+$("tab-login").addEventListener("click", () => setMode("login"));
+$("tab-register").addEventListener("click", () => setMode("register"));
 
 let session = null;
 
@@ -57,9 +96,18 @@ $("form").addEventListener("submit", async (e) => {
   $("log").textContent = "";
   session?.close();
   try {
+    if (mode === "register") {
+      const problem = validateRegistration(growId, password, $("confirm").value);
+      if (problem) throw new Error(problem);
+      status("Membuat akun...");
+      await registerAccount(growId, password, $("confirm").value);
+      log(`akun ${growId} dibuat`, "ok");
+      setMode("login", true); // kalau langkah berikutnya gagal, klik ulang cukup untuk masuk
+    }
     status("Memeriksa akun...");
     const ltoken = await fetchLoginToken(growId, password);
     $("password").value = "";
+    $("confirm").value = "";
     log("akun valid, membuka koneksi game", "ok");
 
     session = new LoginSession({ wsBase, ltoken, name: growId.toLowerCase(), port: startPort });

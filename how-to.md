@@ -149,11 +149,16 @@ Port yang dipakai:
 
 ## 7. Daftar akun, jalankan klien, login
 
-**a. Daftar akun GrowID.** Buka `http://localhost:17901/register`, isi GrowID (3-18 huruf, angka, atau
-`_`) dan kata sandi (minimal 6 karakter). Setelah berhasil Anda akan melihat halaman JSON berisi
-`"status":"success"`; itu normal.
+**a. Jalankan dev server klien** (langkah b di bawah), lalu buka `http://localhost:8080/login.html`.
+Di halaman itu pilih tab **Buat akun**, isi GrowID (3-18 huruf, angka, atau `_`), kata sandi (minimal 6
+karakter), dan ulangi kata sandi. Tombol **Buat akun dan masuk** membuat akun lalu langsung masuk.
+Kalau Anda lebih suka halaman daftar bawaan GrowServer, bisa juga lewat `http://localhost:17901/register`
+(setelah berhasil Anda melihat halaman JSON `"status":"success"`; itu normal).
 
-**b. Jalankan dev server klien** di terminal baru, dari folder `gweb-project`:
+Akun harus dibuat dulu: pesan **"Invalid GrowID or password."** saat login hanya berarti akun itu belum
+ada (atau kata sandinya salah).
+
+**b. Dev server klien** dijalankan di terminal baru, dari folder `gweb-project`:
 
 ```bash
 bun client/tools/dev-server.ts
@@ -164,7 +169,7 @@ langsung, `/player/*` diteruskan ke server login, dan `/ws/*` diteruskan ke gate
 server login GrowServer **tidak mengirim header CORS**; membuka `login.html` lewat `python -m http.server`
 akan gagal dengan "Failed to fetch".
 
-**c. Buka `http://localhost:8080/login.html`**, masukkan GrowID dan kata sandi tadi.
+**c. Masuk.** Setelah akun ada, buka tab **Masuk** dan login dengan GrowID dan kata sandi tadi.
 
 Hasil yang diharapkan di kolom log:
 
@@ -238,7 +243,8 @@ Untuk menimpa satu aset saja, taruh file Anda dengan nama dan jalur yang sama di
 | `server login tidak bisa dihubungi di http://127.0.0.1:17901` (502) | GrowServer belum jalan, atau login-nya crash. Lihat log terminal GrowServer |
 | WebSocket gagal / `403 forbidden` di log gateway (`origin ditolak`) | `WS_ALLOWED_ORIGINS` tidak sama persis dengan address bar. Pakai `http://localhost:8080` di kedua tempat, bukan `127.0.0.1` di salah satunya |
 | `404 no such server` dari gateway | Port game server tidak terdaftar. Gateway hanya meneruskan ke port di `server_ports` (default `17091`) di `configs/server.toml` |
-| `Invalid GrowID or password` | Akun belum dibuat. Daftar di `http://localhost:17901/register` |
+| `Invalid GrowID or password` | Akun belum dibuat atau kata sandi salah. Pakai tab **Buat akun** di halaman login |
+| `GrowID '...' is already registered` | Nama itu sudah dipakai. Pakai tab **Masuk**, atau pilih nama lain |
 | Log berhenti di "Status: ..." tanpa error | Lihat kolom log halaman dan log GrowServer; kirim keduanya kalau perlu bantuan. Ini kasus yang paling mungkin muncul pada percobaan pertama |
 | `GAGAL 0001 ... tidak cocok` saat `apply.sh` | Versi GrowServer berbeda. `git -C ../GrowServer checkout fa72b9e` lalu ulangi |
 | Gagal mengunduh `items.dat` saat setup | Jaringan memblokir GitHub. Unduh manual dan taruh di `GrowServer/.cache/items.dat` |
@@ -268,7 +274,7 @@ cd GrowServer && bun install && bun run setup && cd ..
 # tiap kali main (dua terminal)
 cd GrowServer   && WS_ALLOWED_ORIGINS=http://localhost:8080 bun run start
 cd gweb-project && bun client/tools/dev-server.ts
-# daftar: http://localhost:17901/register   login: http://localhost:8080/login.html
+# buka http://localhost:8080/login.html -> tab "Buat akun" (sekali), lalu tab "Masuk"
 ```
 
 ## 12. Setelah login berhasil
