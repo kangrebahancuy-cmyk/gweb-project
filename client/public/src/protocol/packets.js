@@ -54,7 +54,11 @@ export const TANK_HEADER_SIZE = 56;
 export const PACKET_PREFIX = 4;
 export const TANK_TOTAL_HEADER = PACKET_PREFIX + TANK_HEADER_SIZE; // 60
 
-const MAX_EXTRA = 1 << 20; // 1 MiB: batas wajar untuk extraData (items.dat terkompresi dikirim dalam potongan)
+// Batas extraData. Mengirim ke server: kecil (aksi pemain). Menerima dari server: items.dat terkompresi
+// berukuran sekitar 1.0-1.1 MB dan dikirim dalam satu paket, jadi batas terima harus lebih longgar.
+// Panjang paket tetap dibatasi oleh ukuran frame WebSocket yang sebenarnya diterima.
+const MAX_EXTRA_SEND = 1 << 20; // 1 MiB
+const MAX_EXTRA_RECV = 16 << 20; // 16 MiB
 
 const enc = new TextEncoder();
 const dec = new TextDecoder("utf-8");
@@ -128,7 +132,7 @@ const TANK_DEFAULTS = {
 export function encodeTank(fields) {
   const f = { ...TANK_DEFAULTS, ...fields };
   const extra = f.extraData ?? new Uint8Array(0);
-  if (extra.length > MAX_EXTRA) throw new RangeError("extraData terlalu besar");
+  if (extra.length > MAX_EXTRA_SEND) throw new RangeError("extraData terlalu besar");
   if (extra.length > 0) f.flags |= TANK_FLAGS.EXTENDED_DATA;
   const out = new Uint8Array(TANK_TOTAL_HEADER + extra.length);
   const v = new DataView(out.buffer);
@@ -160,7 +164,7 @@ export function decodeTank(bytes) {
   const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (v.getUint32(0, true) !== PACKET_TYPE.GAME_PACKET) throw new RangeError("bukan paket game");
   const extraLen = v.getUint32(56, true);
-  if (extraLen > MAX_EXTRA || extraLen > bytes.length - TANK_TOTAL_HEADER) {
+  if (extraLen > MAX_EXTRA_RECV || extraLen > bytes.length - TANK_TOTAL_HEADER) {
     throw new RangeError(`extraDataLength ${extraLen} melebihi data yang ada`);
   }
   return {
