@@ -8,6 +8,7 @@
     "test:client": "node --test client/tests/*.test.mjs",
     "test:devserver": "bun test client/tests/dev-server.test.ts",
     "test:gateway": "bun test server/tests/ws-gateway.test.ts",
-    "test:compat": "bun test server/tests/compat.test.ts"
+    "test:compat": "bun test server/tests/compat.test.ts",
+    "e2e": "bun client/tests/e2e/fake-server.ts"
   }
 }

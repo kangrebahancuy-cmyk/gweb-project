@@ -155,6 +155,33 @@ describe("proxy WebSocket", () => {
   });
 });
 
+describe("proxy CDN", () => {
+  test("meneruskan file, mengikuti redirect hanya ke host yang diizinkan", async () => {
+    const cdn = Bun.serve({
+      port: 0,
+      fetch(req) {
+        const p = new URL(req.url).pathname;
+        if (p === "/growtopia/game/a.rttex") return new Response(new Uint8Array([1, 2, 3]), { headers: { "content-type": "application/octet-stream" } });
+        if (p === "/evil") return new Response(null, { status: 302, headers: { Location: "https://evil.example/x" } });
+        if (p === "/http") return new Response(null, { status: 302, headers: { Location: "http://growserver-cache.netlify.app/x" } });
+        return new Response("nf", { status: 404 });
+      },
+    });
+    const d = startDevServer({ port: 0, root, cdnUpstream: `http://127.0.0.1:${cdn.port}` });
+    try {
+      const ok = await fetch(`http://127.0.0.1:${d.port}/cdn/growtopia/game/a.rttex`);
+      expect(Array.from(new Uint8Array(await ok.arrayBuffer()))).toEqual([1, 2, 3]);
+      expect((await fetch(`http://127.0.0.1:${d.port}/cdn/evil`)).status).toBe(502);
+      expect((await fetch(`http://127.0.0.1:${d.port}/cdn/http`)).status).toBe(502);
+      expect((await fetch(`http://127.0.0.1:${d.port}/cdn/nope`)).status).toBe(404);
+      expect((await fetch(`http://127.0.0.1:${d.port}/cdn/%2e%2e/x`)).status).not.toBe(200);
+    } finally {
+      d.stop(true);
+      cdn.stop(true);
+    }
+  });
+});
+
 // Integrasi dengan gateway ASLI (tanpa upstream palsu di sisi WebSocket), memakai konfigurasi yang sama
 // seperti tutorial: WS_ALLOWED_ORIGINS=http://localhost:8080, allowMissingOrigin tidak diaktifkan.
 describe("dev server + gateway asli", () => {

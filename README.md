@@ -102,3 +102,14 @@ mengecualikan `client/public/assets/gen/`. Untuk rilis publik, ganti semuanya de
 1. Unduh dan parse `items.dat` (hash dan alamat CDN sudah diterima dari SuperMain di `session.info`).
 2. Parse `SEND_MAP_DATA` dan render dunia dengan renderer yang ada.
 3. Kirim paket `STATE` (gerak) dan `TILE_CHANGE_REQUEST` (pukul/pasang), terima `SEND_TILE_UPDATE_DATA`.
+
+## Status tahap 3 (bermain di server asli)
+
+Setelah login, halaman `login.html` membuka kanvas game: items.dat dimuat dari server, masuk dunia
+lewat nama, dunia asli digambar, pemain lain terlihat, gerak/pukul/pasang/chat dikirim ke GrowServer.
+Tekstur diambil lewat `/cdn/*` (dev server meneruskan ke CDN GrowServer); kalau gagal dimuat, tile
+digambar sebagai kotak berwarna. Belum ada: sambungan tile otomatis (smart edge), pohon, dialog/wrench,
+suara, pakaian pemain.
+
+Uji end-to-end tanpa GrowServer: `bun run e2e` (server palsu, cetak alamat), lalu
+`python3 -I client/tests/e2e/e2e.py <port-dev> <port-log> <folder-screenshot>`.

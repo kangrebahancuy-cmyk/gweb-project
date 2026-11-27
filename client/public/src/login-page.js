@@ -124,8 +124,12 @@ $("form").addEventListener("submit", async (e) => {
       })
       .on("ready", (r) => {
         status(`Terhubung sebagai ${r.name}`, "ok");
-        log(`siap (userID ${r.userID}). Langkah berikutnya: parse SEND_MAP_DATA dan render dunia.`, "ok");
+        log(`siap (userID ${r.userID}), membuka permainan`, "ok");
         window.gtSession = session; // untuk eksperimen dari console
+        startGame(session, r).catch((e) => {
+          status("Gagal memulai permainan", "err");
+          log(e.message, "err");
+        });
       })
       .start();
   } catch (err) {
@@ -134,3 +138,55 @@ $("form").addEventListener("submit", async (e) => {
     $("go").disabled = false;
   }
 });
+
+/** Setelah login: ambil items.dat, tampilkan kanvas, hubungkan tombol dunia dan chat. */
+async function startGame(login, ready) {
+  const [{ GameSession }, { GameView }] = await Promise.all([import("./game/game-session.js"), import("./game/game-view.js")]);
+  const g = new GameSession({ send: (b) => login.send(b), name: ready.name });
+  g.attach(login);
+  const chat = $("chat");
+  const say = (line, cls) => {
+    const span = document.createElement("span");
+    if (cls) span.className = cls;
+    span.textContent = line + "\n";
+    chat.append(span);
+    chat.scrollTop = chat.scrollHeight;
+  };
+  g.on("console", (m) => say(m))
+    .on("chat", (c) => say(`${c.name || "?"}: ${c.text}`))
+    .on("error", (e) => say(`galat: ${e.message}`, "err"))
+    .on("joinfailed", () => say("gagal masuk dunia", "err"))
+    .on("disconnect", () => {
+      status("Terputus dari server", "err");
+      view.stop();
+    })
+    .on("world", (w) => say(`masuk dunia ${w.name} (${w.width}x${w.height})`, "ok"));
+
+  const cdn = /^[\w\-/]+\/$/.test(ready.info?.cdnPath ?? "") ? ready.info.cdnPath : "growtopia/";
+  const view = new GameView({ canvas: $("screen"), session: g, hotbar: $("hotbar"), cdnBase: `/cdn/${cdn}game/` });
+  document.querySelector("main").hidden = true;
+  $("game").hidden = false;
+  view.start();
+
+  $("join").addEventListener("click", () => {
+    try {
+      g.joinWorld($("world").value);
+    } catch (e) {
+      say(e.message, "err");
+    }
+  });
+  $("world").addEventListener("keydown", (e) => e.key === "Enter" && $("join").click());
+  $("leave").addEventListener("click", () => g.leaveWorld());
+  $("chatform").addEventListener("submit", (e) => {
+    e.preventDefault();
+    g.say($("chatinput").value);
+    $("chatinput").value = "";
+  });
+
+  try {
+    const db = await g.start();
+    say(`items.dat dimuat: ${db.count} item. Masukkan nama dunia.`, "ok");
+  } catch (e) {
+    say(`items.dat gagal: ${e.message}`, "err");
+  }
+}

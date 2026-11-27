@@ -20,6 +20,14 @@
     button:disabled { opacity: .5; cursor: default; }
     #status { margin: 14px 0 6px; font-weight: 600; }
     #log { margin: 0; padding: 10px; min-height: 120px; max-height: 260px; overflow: auto; background: #0e0f15; border-radius: 8px; font: 12px/1.5 ui-monospace, monospace; white-space: pre-wrap; word-break: break-word; }
+    #game { width: min(1000px, 98vw); }
+    #game canvas { width: 100%; background: #6fb7e8; border-radius: 8px; image-rendering: pixelated; display: block; }
+    #bar { display: flex; gap: 8px; margin: 8px 0; }
+    #bar input { flex: 1; min-width: 0; }
+    #hotbar { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+    .slot { background: #1f2130; border-color: #3a3d52; padding: 6px 10px; font-size: 12px; }
+    .slot.sel { background: #3b6df0; border-color: #3b6df0; }
+    #chat { margin: 8px 0 0; padding: 8px; height: 110px; overflow: auto; background: #0e0f15; border-radius: 8px; font: 12px/1.5 ui-monospace, monospace; white-space: pre-wrap; }
     .err { color: #ff7b7b; } .ok { color: #7bdc9a; }
   </style>
 </head>
@@ -40,6 +48,18 @@
     <div id="status" aria-live="polite"></div>
     <pre id="log"></pre>
   </main>
+  <section id="game" hidden>
+    <div id="bar">
+      <input id="world" placeholder="Nama dunia (mis. START)" maxlength="24" autocomplete="off">
+      <button id="join" type="button">Masuk dunia</button>
+      <button id="leave" type="button">Keluar</button>
+    </div>
+    <canvas id="screen" width="960" height="540"></canvas>
+    <div id="hotbar"></div>
+    <form id="chatform" class="bar"><input id="chatinput" placeholder="Ketik pesan lalu Enter" maxlength="120" autocomplete="off"></form>
+    <pre id="chat"></pre>
+    <p class="hint">A/D atau panah = jalan, W/Spasi = lompat, klik kiri = pukul, klik kanan = pasang, 1-9 = pilih item.</p>
+  </section>
   <script type="module" src="src/login-page.js"></script>
 </body>
 </html>
