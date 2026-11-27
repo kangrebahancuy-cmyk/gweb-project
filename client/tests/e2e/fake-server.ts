@@ -18,7 +18,14 @@ for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
   const i = y * W + x;
   if (y === H - 1) fg[i] = 8; else if (y >= 8) fg[i] = 2; else bg[i] = 14;
 }
-fg[7 * W + 0] = 0;
+// variasi untuk uji penyambungan: bukit tanah, platform kayu, tiang lampu, lava, blok sendirian
+for (let x = 6; x < 12; x++) fg[7 * W + x] = 2;
+for (let x = 8; x < 10; x++) fg[6 * W + x] = 2;
+fg[5 * W + 14] = 102; fg[5 * W + 15] = 102; fg[5 * W + 16] = 102;
+fg[7 * W + 17] = 992; fg[6 * W + 17] = 992; fg[5 * W + 17] = 992;
+fg[7 * W + 2] = 4; fg[7 * W + 3] = 4; fg[8 * W + 3] = 4;
+fg[4 * W + 3] = 2;
+fg[7 * W + 0] = 6;
 
 function mapBytes() {
   const o: number[] = [];
@@ -52,7 +59,11 @@ const http = Bun.serve({
     }
     if (u.pathname.startsWith("/player/growid/validate/checktoken/"))
       return new Response(JSON.stringify({ status: "success", token: decodeURIComponent(u.pathname.split("/").pop()!), accountType: "growtopia", accountAge: 2 }), { headers: { "Content-Type": "text/html" } });
-    if (u.pathname.startsWith("/cdn/")) return new Response("nf", { status: 404 });
+    if (u.pathname.startsWith("/growtopia/game/")) {
+      const name = u.pathname.split("/").pop()!;
+      const f = Bun.file("/home/claude/kangrebahancuy-cmyk/gtindapkzip/assets/game/" + name);
+      return /^[\w.\-]+$/.test(name) && (await f.exists()) ? new Response(f) : new Response("nf", { status: 404 });
+    }
     return new Response("nf", { status: 404 });
   },
   websocket: {

@@ -5,6 +5,7 @@ import { createPlayer, stepPlayer } from "../physics.js";
 import { decodeRttex } from "./rttex.js";
 import { ACTION } from "./items.js";
 import { TILE_FLAG } from "./world-data.js";
+import { frameIndex, framePos } from "./tile-frame.js";
 
 const TILE = 32;
 const REACH = 4; // jarak pukul/pasang dalam tile (server tetap memeriksa sendiri)
@@ -252,11 +253,25 @@ export class GameView {
     return t.state === "ok" ? t.bmp : null;
   }
 
-  _drawItem(ctx, id, dx, dy) {
+  /** Frame tile sesuai tetangga sejenis di lapisan yang sama. */
+  _frame(it, layer, x, y) {
+    const w = this.s.world;
+    const arr = layer === "bg" ? w.bg : w.fg;
+    const id = it.id;
+    const same = (ox, oy) => {
+      const nx = x + ox, ny = y + oy;
+      if (nx < 0 || ny < 0 || nx >= w.width || ny >= w.height) return true; // luar dunia dianggap ada
+      return arr[ny * w.width + nx] === id;
+    };
+    return frameIndex(it.storageType, same);
+  }
+
+  _drawItem(ctx, id, dx, dy, layer, x, y) {
     const it = this.s.items?.get(id);
     const bmp = it ? this._texture(it.texture) : null;
     if (bmp) {
-      ctx.drawImage(bmp, it.textureX * TILE, it.textureY * TILE, TILE, TILE, dx, dy, TILE, TILE);
+      const { col, row } = framePos(it, layer ? this._frame(it, layer, x, y) : 0);
+      ctx.drawImage(bmp, col * TILE, row * TILE, TILE, TILE, dx, dy, TILE, TILE);
     } else {
       ctx.fillStyle = fallbackColor(id);
       ctx.fillRect(dx, dy, TILE, TILE);
@@ -289,7 +304,7 @@ export class GameView {
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
         const i = y * w.width + x;
-        if (w.bg[i]) this._drawItem(ctx, w.bg[i], x * TILE - cx, y * TILE - cy);
+        if (w.bg[i]) this._drawItem(ctx, w.bg[i], x * TILE - cx, y * TILE - cy, "bg", x, y);
       }
     }
     for (let y = y0; y <= y1; y++) {
@@ -303,7 +318,7 @@ export class GameView {
           ctx.fillStyle = "#4caf50"; // pohon: render khusus belum dibuat
           ctx.fillRect(dx + 8, dy + 8, 16, 24);
         } else {
-          this._drawItem(ctx, fg, dx, dy);
+          this._drawItem(ctx, fg, dx, dy, "fg", x, y);
         }
         const d = s.damage.get(i);
         if (d) {
