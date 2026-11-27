@@ -94,6 +94,8 @@ function onText(ws: any, t: any) {
       ws.send(encodeTank({ type: TANK_TYPE.SEND_MAP_DATA, netID: -1, flags: 8, extraData: mapBytes() }));
       ws.send(callPacket("OnSpawn", [spawnTxt(1, "dev", 64, 7 * 32 - 30, true)]));
       ws.send(callPacket("OnSpawn", [spawnTxt(2, "budi", 200, 7 * 32 - 30, false)]));
+      ws.send(callPacket("OnSetClothing", [[0, 36, 48], [40, 34, 0], [0, 0, 0], 0x8295c3ff, [0, 0, 0]], { netID: 1 }));
+      ws.send(callPacket("OnSetClothing", [[66, 38, 76], [78, 0, 94], [0, 0, 0], 0xb3a5e0ff, [0, 0, 0]], { netID: 2 }));
       ws.send(callPacket("OnTalkBubble", [2, "CP:_PL:0_OID:_`$halo dev", 0, 0], { netID: 2 }));
     }
     if (a === "input") { log.push("say:" + t.get("text")); }

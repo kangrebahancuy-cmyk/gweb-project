@@ -6,6 +6,7 @@ import { decodeRttex } from "./rttex.js";
 import { ACTION } from "./items.js";
 import { TILE_FLAG } from "./world-data.js";
 import { frameIndex, framePos } from "./tile-frame.js";
+import { PlayerSprites } from "./player-sprite.js";
 
 const TILE = 32;
 const REACH = 4; // jarak pukul/pasang dalam tile (server tetap memeriksa sendiri)
@@ -43,6 +44,7 @@ export class GameView {
     this.lastAct = 0;
     this.raf = 0;
     this.last = 0;
+    this.sprites = new PlayerSprites((n) => this._texture(n), { get: (id) => this.s.items?.get(id) });
     this._bind();
   }
 
@@ -344,13 +346,24 @@ export class GameView {
     // pemain
     ctx.font = "12px system-ui";
     ctx.textAlign = "center";
+    const nowMs = performance.now();
     for (const p of s.players.values()) {
-      const px = (p.local && this.me ? this.me.x : p.x) - cx;
-      const py = (p.local && this.me ? this.me.y : p.y) - cy;
-      ctx.fillStyle = p.local ? "#ffcc33" : "#e86f6f";
-      ctx.fillRect(px, py, 20, 30);
-      ctx.fillStyle = "#222";
-      ctx.fillRect(px + ((p.local && this.me ? this.me.facing < 0 : p.facingLeft) ? 3 : 11), py + 6, 6, 6);
+      const local = p.local && this.me;
+      const px = (local ? this.me.x : p.x) - cx;
+      const py = (local ? this.me.y : p.y) - cy;
+      const facingLeft = local ? this.me.facing < 0 : p.facingLeft;
+      let moving;
+      if (local) moving = Math.abs(this.me.vx) > 5;
+      else {
+        moving = p._lx !== undefined && Math.abs(p.x - p._lx) > 0.5 && nowMs - p._lt < 250;
+        if (p._lx !== p.x) { p._lt = nowMs; }
+        p._lx = p.x;
+      }
+      const drawn = this.sprites.draw(ctx, { x: px, y: py, facingLeft, moving, skin: p.skin, clothes: p.clothes }, nowMs);
+      if (!drawn) {
+        ctx.fillStyle = p.local ? "#ffcc33" : "#e86f6f";
+        ctx.fillRect(px, py, 20, 30);
+      }
       ctx.fillStyle = "#fff";
       ctx.fillText(p.name, px + 10, py - 4);
     }

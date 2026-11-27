@@ -338,6 +338,18 @@ export class GameSession {
         }
         return;
       }
+      case "OnSetClothing": {
+        const p = this.players.get(call.netID);
+        if (!p) return;
+        const v3 = (x) => (Array.isArray(x) ? x.map((n) => (Number.isFinite(n) ? Math.round(n) : 0)) : [0, 0, 0]);
+        const [hair, shirt, pants] = v3(a[0]);
+        const [feet, face, hand] = v3(a[1]);
+        const [back, mask, necklace] = v3(a[2]);
+        p.clothes = { hair, shirt, pants, feet, face, hand, back, mask, necklace, ances: v3(a[4])[0] };
+        p.skin = Number(a[3]) >>> 0;
+        this._emit("players", this.players);
+        return;
+      }
       case "OnTalkBubble": {
         const [netID, text] = a;
         this._emit("chat", { netID, text: cleanChat(text), name: this.players.get(netID)?.name ?? "" });
@@ -366,6 +378,8 @@ export class GameSession {
       speedX: 0,
       speedY: 0,
       local: p.get("type") === "local",
+      clothes: null,
+      skin: 0x8295c3ff,
     };
     this.players.set(netID, entry);
     if (entry.local) this.me = entry;

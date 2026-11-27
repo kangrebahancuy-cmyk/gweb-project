@@ -18,7 +18,7 @@ function variantExtra(args) {
       const b = enc.encode(a);
       out.push(2, b.length & 255, (b.length >> 8) & 255, 0, 0, ...b);
     } else if (Array.isArray(a)) {
-      out.push(3, ...new Uint8Array(new Float32Array(a).buffer));
+      out.push(a.length === 1 ? 1 : a.length === 2 ? 3 : 4, ...new Uint8Array(new Float32Array(a).buffer));
     } else {
       out.push(5, ...new Uint8Array(new Uint32Array([a]).buffer));
     }
@@ -193,4 +193,15 @@ test("paket cacat tidak melempar keluar, hanya event error", () => {
   g.handle(tank({ type: TANK_TYPE.SEND_INVENTORY_STATE, extraData: new Uint8Array([1]) }));
   assert.equal(errs.length, 2);
   g.say("a|b\nc");
+});
+
+test("OnSetClothing: pakaian dan warna kulit disimpan per pemain", () => {
+  const g = new GameSession({ send() {} });
+  g.handle(spawn(2, "budi", 0, 0, false));
+  assert.equal(g.players.get(2).clothes, null);
+  g.handle(call(2, "OnSetClothing", [66, 38, 76], [78, 0, 94], [0, 0, 0], 0xb3a5e0ff, [0, 0, 0]));
+  const p = g.players.get(2);
+  assert.deepEqual([p.clothes.hair, p.clothes.shirt, p.clothes.pants, p.clothes.feet, p.clothes.hand], [66, 38, 76, 78, 94]);
+  assert.equal(p.skin, 0xb3a5e0ff);
+  g.handle(call(99, "OnSetClothing", [1, 1, 1], [1, 1, 1], [0, 0, 0], 0, [0, 0, 0])); // pemain tak dikenal: diabaikan
 });
