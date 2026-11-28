@@ -12,6 +12,8 @@ import { crackFrame, rawRGB, treeGrowth, TREE_SHEET, tileLabel } from "./tile-ef
 const TILE = 32;
 const REACH = 4; // jarak pukul/pasang dalam tile (server tetap memeriksa sendiri)
 const SEND_INTERVAL_MS = 100;
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 3;
 const SAFE_NAME = /^[\w.\-]+$/;
 
 /** Warna cadangan yang stabil per item, dipakai kalau tekstur belum/gagal dimuat. */
@@ -41,6 +43,10 @@ export class GameView {
     this.mouse = { x: 0, y: 0, tx: 0, ty: 0, left: false, right: false };
     this.textures = new Map(); // nama file -> {state, bmp}
     this.tints = new Map();
+    this.zoom = this._loadZoom();
+    this.vw = o.canvas.width;
+    this.vh = o.canvas.height;
+    this.scale = 1;
     this.lastSend = 0;
     this.lastSent = null;
     this.lastAct = 0;
@@ -69,6 +75,9 @@ export class GameView {
       if (this._typing(e)) return;
       this.keys.add(e.code);
       if (/^Digit[1-9]$/.test(e.code)) this.select(Number(e.code.slice(5)) - 1);
+      if (e.code === "Equal" || e.code === "NumpadAdd") this.setZoom(this.zoom * 1.1);
+      if (e.code === "Minus" || e.code === "NumpadSubtract") this.setZoom(this.zoom / 1.1);
+      if (e.code === "Digit0" || e.code === "Numpad0") this.setZoom(1);
       if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
     };
     this._ku = (e) => this.keys.delete(e.code);
@@ -80,6 +89,10 @@ export class GameView {
     addEventListener("keyup", this._ku);
     addEventListener("blur", this._blur);
     c.addEventListener("contextmenu", (e) => e.preventDefault());
+    c.addEventListener("wheel", (e) => { e.preventDefault(); this.setZoom(this.zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1)); }, { passive: false });
+    this._rs = () => this.resize();
+    addEventListener("resize", this._rs);
+    this.resize();
     c.addEventListener("mousemove", (e) => this._mouse(e));
     c.addEventListener("mousedown", (e) => {
       this._mouse(e);
@@ -92,6 +105,39 @@ export class GameView {
     });
   }
 
+  _loadZoom() {
+    try {
+      const z = Number(localStorage.getItem("gt.zoom"));
+      return Number.isFinite(z) && z >= ZOOM_MIN && z <= ZOOM_MAX ? z : 1;
+    } catch {
+      return 1;
+    }
+  }
+
+  setZoom(z) {
+    this.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(z * 100) / 100));
+    try {
+      localStorage.setItem("gt.zoom", String(this.zoom));
+    } catch {
+      /* penyimpanan tidak tersedia */
+    }
+    this.resize();
+  }
+
+  /** Samakan ukuran kanvas dengan kotak tampilannya (tajam di layar HiDPI) dan hitung ukuran pandang dalam piksel dunia. */
+  resize() {
+    const c = this.canvas;
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    const cssW = Math.max(320, Math.floor(c.parentElement?.clientWidth || c.clientWidth || 960));
+    const cssH = Math.max(240, Math.min(900, Math.floor(window.innerHeight - 230)));
+    c.style.height = cssH + "px";
+    c.width = Math.round(cssW * dpr);
+    c.height = Math.round(cssH * dpr);
+    this.scale = this.zoom * dpr;
+    this.vw = c.width / this.scale;
+    this.vh = c.height / this.scale;
+  }
+
   _typing(e) {
     const t = e.target;
     return t instanceof HTMLElement && (t.tagName === "INPUT" || t.tagName === "TEXTAREA");
@@ -99,8 +145,8 @@ export class GameView {
 
   _mouse(e) {
     const r = this.canvas.getBoundingClientRect();
-    const sx = this.canvas.width / r.width;
-    const sy = this.canvas.height / r.height;
+    const sx = this.vw / r.width;
+    const sy = this.vh / r.height;
     this.mouse.x = (e.clientX - r.left) * sx;
     this.mouse.y = (e.clientY - r.top) * sy;
   }
@@ -122,6 +168,7 @@ export class GameView {
     removeEventListener("keydown", this._kd);
     removeEventListener("keyup", this._ku);
     removeEventListener("blur", this._blur);
+    removeEventListener("resize", this._rs);
   }
 
   // ------------------------------------------------------------ inventori
@@ -188,8 +235,8 @@ export class GameView {
 
     // kamera
     const w = s.world;
-    const vw = this.canvas.width;
-    const vh = this.canvas.height;
+    const vw = this.vw;
+    const vh = this.vh;
     this.cam.x = Math.max(0, Math.min(w.width * TILE - vw, this.me.x + this.me.w / 2 - vw / 2));
     this.cam.y = Math.max(0, Math.min(w.height * TILE - vh, this.me.y + this.me.h / 2 - vh / 2));
     if (w.width * TILE < vw) this.cam.x = (w.width * TILE - vw) / 2;
@@ -355,7 +402,9 @@ export class GameView {
 
   draw() {
     const ctx = this.ctx;
-    const { width: vw, height: vh } = this.canvas;
+    const vw = this.vw;
+    const vh = this.vh;
+    ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = "#6fb7e8";
     ctx.fillRect(0, 0, vw, vh);

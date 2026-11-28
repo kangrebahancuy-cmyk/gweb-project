@@ -166,6 +166,8 @@ async function startGame(login, ready) {
   const view = new GameView({ canvas: $("screen"), session: g, hotbar: $("hotbar"), cdnBase: `/cdn/${cdn}game/` });
   document.querySelector("main").hidden = true;
   $("game").hidden = false;
+  view.resize();
+  window.gtView = view; // untuk eksperimen dan uji e2e
   view.start();
 
   $("join").addEventListener("click", () => {

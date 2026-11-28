@@ -1,6 +1,9 @@
 // Fisika pemain: gravitasi, lari, lompat, tabrakan AABB per sumbu. Tanpa DOM.
 import { TILE } from "./world.js";
 
+// PERHATIAN: angka-angka ini hasil perkiraan sendiri, BELUM disamakan dengan klien Growtopia asli
+// (server GrowServer tidak menyimpan konstanta fisika; itu ada di klien tertutup). Untuk menyamakan,
+// ukur di game asli: kecepatan jalan (tile/detik), tinggi lompat (tile), lama di udara (detik).
 export const PHYS = {
   maxSpeed: 190, // px/detik
   accel: 1500,

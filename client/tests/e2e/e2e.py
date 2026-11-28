@@ -37,9 +37,10 @@ with sync_playwright() as p:
     pg.screenshot(path=f"{out}/e2e_world.png")
 
     box = pg.locator("#screen").bounding_box()
-    sx = box["width"] / 960
-    def at(tx, ty):  # kamera dipusatkan: dunia 640x384 di kanvas 960x540
-        return box["x"] + (tx * 32 + 16 + 160) * sx, box["y"] + (ty * 32 + 16 + 78) * sx
+    def at(tx, ty):  # tengah tile (tx,ty) dalam koordinat halaman, dihitung dari kamera dan ukuran pandang aktual
+        v = pg.evaluate("({cx: gtView.cam.x, cy: gtView.cam.y, vw: gtView.vw, vh: gtView.vh})")
+        k = box["width"] / v["vw"]
+        return box["x"] + (tx * 32 + 16 - v["cx"]) * k, box["y"] + (ty * 32 + 16 - v["cy"]) * (box["height"] / v["vh"])
 
     # gerak: tahan D sebentar, posisi baru harus dilaporkan ke server
     n0 = len([l for l in server_log() if l.startswith("state:")])
@@ -59,6 +60,14 @@ with sync_playwright() as p:
     pg.mouse.move(x, y); pg.mouse.down(button="right"); pg.wait_for_timeout(250); pg.mouse.up(button="right"); pg.wait_for_timeout(300)
     check(any(l.startswith("place:2@3,8") for l in server_log()), "pasang terkirim ke server")
     check("x9" in pg.inner_text("#hotbar"), "inventori Dirt berkurang jadi 9 setelah gema server")
+
+    # zoom: roda mouse memperbesar, tombol 0 mengembalikan
+    z0 = pg.evaluate("gtView.zoom")
+    pg.mouse.move(box["x"] + 50, box["y"] + 50); pg.mouse.wheel(0, -200); pg.wait_for_timeout(200)
+    z1 = pg.evaluate("gtView.zoom")
+    check(z1 > z0, f"zoom roda mouse ({z0} -> {z1})")
+    pg.keyboard.press("Digit0"); pg.wait_for_timeout(150)
+    check(pg.evaluate("gtView.zoom") == 1, "tombol 0 mengembalikan zoom")
 
     # chat
     pg.fill("#chatinput", "halo dunia"); pg.press("#chatinput", "Enter"); pg.wait_for_timeout(300)
