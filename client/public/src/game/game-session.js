@@ -47,7 +47,8 @@ export class GameSession {
     this.inventoryMax = 0;
     this.players = new Map(); // netID -> {netID,userID,name,x,y,facingLeft,local}
     this.me = null; // entri pemain lokal
-    this.damage = new Map(); // indeks tile -> {amount, at}
+    this.gems = 0;
+    this.damage = new Map(); // indeks tile -> {hits, at, resetMs, breakHits}
     this._itemsWaiter = null;
     this._seq = 0;
   }
@@ -342,6 +343,14 @@ export class GameSession {
           p.x = x;
           p.y = y;
           this._emit("players", this.players);
+        }
+        return;
+      }
+      case "OnSetBux": {
+        const n = Number(a[0]);
+        if (Number.isFinite(n) && n >= 0) {
+          this.gems = n;
+          this._emit("gems", n);
         }
         return;
       }

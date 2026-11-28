@@ -67,6 +67,10 @@ export class GameView {
       this.me = null;
     });
     s.on("players", () => {});
+    this.bubbles = new Map(); // netID -> {text, until}
+    s.on("chat", (c) => {
+      if (c.netID !== undefined && c.text) this.bubbles.set(c.netID, { text: String(c.text).slice(0, 120), until: performance.now() + 5000 });
+    });
     s.on("inventory", () => this.renderHotbar());
     s.on("items", () => this.renderHotbar());
 
@@ -190,6 +194,30 @@ export class GameView {
     const list = this.placeables();
     if (i >= 0 && i < list.length) this.selected = i;
     this.renderHotbar();
+  }
+
+  /** Bubble chat: kotak putih membulat dengan teks hitam, ditaruh di atas label nama. */
+  _bubble(ctx, text, x, y) {
+    ctx.save();
+    ctx.font = "12px sans-serif";
+    const lines = [];
+    let cur = "";
+    for (const word of text.split(" ")) {
+      const t = cur ? cur + " " + word : word;
+      if (cur && ctx.measureText(t).width > 140) { lines.push(cur); cur = word; } else cur = t;
+    }
+    lines.push(cur);
+    const w = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 12;
+    const h = lines.length * 14 + 8;
+    const bx = x - w / 2, by = y - h;
+    ctx.fillStyle = "rgba(255,255,255,.92)";
+    ctx.beginPath();
+    ctx.roundRect(bx, by, w, h, 6);
+    ctx.fill();
+    ctx.fillStyle = "#000";
+    ctx.textAlign = "center";
+    lines.forEach((l, i) => ctx.fillText(l, x, by + 15 + i * 14));
+    ctx.restore();
   }
 
   renderHotbar() {
@@ -490,6 +518,9 @@ export class GameView {
       }
       ctx.fillStyle = "#fff";
       ctx.fillText(p.name, px + 10, py - 4);
+      const b = this.bubbles.get(p.netID);
+      if (b && b.until > nowMs) this._bubble(ctx, b.text, px + 10, py - 18);
+      else if (b) this.bubbles.delete(p.netID);
     }
     ctx.textAlign = "start";
 

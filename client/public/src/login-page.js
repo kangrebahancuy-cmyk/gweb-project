@@ -144,17 +144,17 @@ async function startGame(login, ready) {
   const [{ GameSession }, { GameView }] = await Promise.all([import("./game/game-session.js"), import("./game/game-view.js")]);
   const g = new GameSession({ send: (b) => login.send(b), name: ready.name });
   g.attach(login);
-  const chat = $("chat");
-  const say = (line, cls) => {
-    const span = document.createElement("span");
-    if (cls) span.className = cls;
-    span.textContent = line + "\n";
-    chat.append(span);
-    chat.scrollTop = chat.scrollHeight;
-  };
-  g.on("console", (m) => say(m))
-    .on("chat", (c) => say(`${c.name || "?"}: ${c.text}`))
-    .on("error", (e) => say(`galat: ${e.message}`, "err"))
+  const { Hud } = await import("./game/hud.js");
+  const cdn = /^[\w\-/]+\/$/.test(ready.info?.cdnPath ?? "") ? ready.info.cdnPath : "growtopia/";
+  const hud = new Hud({
+    root: $("hud"),
+    session: g,
+    assetBase: `/cdn/${cdn}`,
+    onSay: (text) => g.say(text),
+    onLeave: () => g.leaveWorld(),
+  });
+  const say = (line, cls) => hud.note(line, cls);
+  g.on("error", (e) => say(`galat: ${e.message}`, "err"))
     .on("joinfailed", () => say("gagal masuk dunia", "err"))
     .on("disconnect", () => {
       status("Terputus dari server", "err");
@@ -162,7 +162,6 @@ async function startGame(login, ready) {
     })
     .on("world", (w) => say(`masuk dunia ${w.name} (${w.width}x${w.height})`, "ok"));
 
-  const cdn = /^[\w\-/]+\/$/.test(ready.info?.cdnPath ?? "") ? ready.info.cdnPath : "growtopia/";
   const view = new GameView({ canvas: $("screen"), session: g, hotbar: $("hotbar"), cdnBase: `/cdn/${cdn}game/` });
   document.querySelector("main").hidden = true;
   $("game").hidden = false;
@@ -179,11 +178,6 @@ async function startGame(login, ready) {
   });
   $("world").addEventListener("keydown", (e) => e.key === "Enter" && $("join").click());
   $("leave").addEventListener("click", () => g.leaveWorld());
-  $("chatform").addEventListener("submit", (e) => {
-    e.preventDefault();
-    g.say($("chatinput").value);
-    $("chatinput").value = "";
-  });
 
   try {
     const db = await g.start();

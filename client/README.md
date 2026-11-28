@@ -52,3 +52,10 @@ Server harus menjadi otoritas untuk posisi dan perubahan tile, klien hanya mengi
 - `src/assets.js` loader manifest dan gambar, `src/net.js` transport lokal/WebSocket
 - `src/main.js` input, render, HUD, loop game
 - `tools/rttex2png.py` konverter `.rttex` ke PNG
+
+## HUD (tahap 4)
+
+`src/game/hud.js` membuat overlay DOM di atas kanvas: panel profil + gem (OnSetBux), tombol menu/chat,
+konsol chat dengan tab All/World/Private/System, dan bubble chat di atas kepala pemain (di `game-view.js`).
+Ukuran dan warna mengikuti `WorldUI.rcss` / `Console.rcss` klien asli; aset tombol dimuat dari
+`/cdn/<cdnPath>interface/*.rttex`. Isi menu, backpack, dan tombol friend/shop belum dibuat.

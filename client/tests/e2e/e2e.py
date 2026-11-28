@@ -29,8 +29,16 @@ with sync_playwright() as p:
 
     pg.fill("#world", "start"); pg.click("#join")
     pg.wait_for_function("document.getElementById('chat').textContent.includes('masuk dunia START (20x12)')", timeout=10000)
-    pg.wait_for_function("document.getElementById('chat').textContent.includes('budi: halo dev')", timeout=5000)
+    pg.wait_for_function("document.getElementById('chat').textContent.includes('<budi> halo dev')", timeout=5000)
     check(True, "dunia dimuat, chat pemain lain tampil")
+    pg.wait_for_function("document.querySelector('.hud-gem-text').textContent === '12,345'", timeout=5000)
+    check(True, "gem dari OnSetBux tampil di HUD")
+    pg.wait_for_function("document.querySelector('.hud-btn').style.backgroundImage.includes('data:image/png')", timeout=8000)
+    check(True, "aset tombol menu dimuat dari interface/")
+    pg.click(".hud-tab:nth-child(3)")
+    check(pg.locator(".hud-line").count() == 0, "tab Private kosong")
+    pg.click(".hud-tab:nth-child(1)")
+    check(pg.locator(".hud-line").count() > 0, "tab All menampilkan baris")
     pg.wait_for_function("document.querySelectorAll('#hotbar .slot').length > 0", timeout=5000)
     check("Dirt" in pg.inner_text("#hotbar"), "hotbar berisi Dirt dari inventori")
     pg.wait_for_timeout(600)
@@ -63,7 +71,7 @@ with sync_playwright() as p:
 
     # zoom: roda mouse memperbesar, tombol 0 mengembalikan
     z0 = pg.evaluate("gtView.zoom")
-    pg.mouse.move(box["x"] + 50, box["y"] + 50); pg.mouse.wheel(0, -200); pg.wait_for_timeout(200)
+    pg.mouse.move(box["x"] + 20, box["y"] + box["height"] - 20); pg.mouse.wheel(0, -200); pg.wait_for_timeout(200)
     z1 = pg.evaluate("gtView.zoom")
     check(z1 > z0, f"zoom roda mouse ({z0} -> {z1})")
     pg.keyboard.press("Digit0"); pg.wait_for_timeout(150)

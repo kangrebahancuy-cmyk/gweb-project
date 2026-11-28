@@ -72,6 +72,11 @@ const http = Bun.serve({
       const f = Bun.file("/home/claude/kangrebahancuy-cmyk/gtindapkzip/assets/game/" + name);
       return /^[\w.\-]+$/.test(name) && (await f.exists()) ? new Response(f) : new Response("nf", { status: 404 });
     }
+    if (u.pathname.startsWith("/growtopia/interface/")) {
+      const rel = u.pathname.slice("/growtopia/interface/".length);
+      const f = Bun.file("/home/claude/kangrebahancuy-cmyk/gtindapkzip/assets/interface/" + rel);
+      return /^[\w\-/]+\.rttex$/.test(rel) && !rel.includes("..") && (await f.exists()) ? new Response(f) : new Response("nf", { status: 404 });
+    }
     return new Response("nf", { status: 404 });
   },
   websocket: {
@@ -105,6 +110,8 @@ function onText(ws: any, t: any) {
       ws.send(callPacket("OnSetClothing", [[0, 36, 48], [40, 34, 0], [0, 0, 0], 0x8295c3ff, [0, 0, 0]], { netID: 1 }));
       ws.send(callPacket("OnSetClothing", [[66, 38, 76], [78, 0, 94], [0, 0, 0], 0xb3a5e0ff, [0, 0, 0]], { netID: 2 }));
       ws.send(callPacket("OnTalkBubble", [2, "CP:_PL:0_OID:_`$halo dev", 0, 0], { netID: 2 }));
+      ws.send(callPacket("OnSetBux", [{ i32: 12345 }, 1, 1]));
+      ws.send(callPacket("OnConsoleMessage", ["CP:_PL:0_OID:_CT:[W]_`$<`2budi`$> halo dev"]));
     }
     if (a === "input") { log.push("say:" + t.get("text")); }
   }
