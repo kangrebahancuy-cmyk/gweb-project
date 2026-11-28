@@ -108,8 +108,8 @@ mengecualikan `client/public/assets/gen/`. Untuk rilis publik, ganti semuanya de
 Setelah login, halaman `login.html` membuka kanvas game: items.dat dimuat dari server, masuk dunia
 lewat nama, dunia asli digambar, pemain lain terlihat, gerak/pukul/pasang/chat dikirim ke GrowServer.
 Tekstur diambil lewat `/cdn/*` (dev server meneruskan ke CDN GrowServer); kalau gagal dimuat, tile
-digambar sebagai kotak berwarna. Belum ada: sambungan tile otomatis (smart edge), pohon, dialog/wrench,
-suara, pakaian pemain.
+digambar sebagai kotak berwarna. Sudah ada: sambungan tile otomatis, karakter dari sprite asli, pohon/seed (tumbuh sesuai umur),
+retak blok, label pintu dan papan. Belum ada: dialog/wrench, suara, HUD seperti klien asli.
 
 Uji end-to-end tanpa GrowServer: `bun run e2e` (server palsu, cetak alamat), lalu
 `python3 -I client/tests/e2e/e2e.py <port-dev> <port-log> <folder-screenshot>`.

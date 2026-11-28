@@ -163,7 +163,9 @@ test("TILE_APPLY_DAMAGE dicatat dan hilang saat tile berubah", () => {
   const g = new GameSession({ send() {} });
   g.handle(tank({ type: TANK_TYPE.SEND_MAP_DATA, extraData: mapBytes() }));
   g.handle(tank({ type: TANK_TYPE.TILE_APPLY_DAMAGE, netID: 1, itemID: 6, tileX: 1, tileY: 1 }));
-  assert.equal(g.damage.get(1 + 1 * 4).amount, 6);
+  assert.equal(g.damage.get(1 + 1 * 4).hits, 1); // 6 = satu pukulan
+  g.handle(tank({ type: TANK_TYPE.TILE_APPLY_DAMAGE, netID: 1, itemID: 6, tileX: 1, tileY: 1 }));
+  assert.equal(g.damage.get(1 + 1 * 4).hits, 2); // menumpuk
   g.handle(tank({ type: TANK_TYPE.SEND_TILE_UPDATE_DATA, tileX: 1, tileY: 1, extraData: new Uint8Array(8) }));
   assert.equal(g.damage.size, 0);
 });

@@ -49,7 +49,9 @@ with sync_playwright() as p:
 
     # pukul tile tanah di sebelah kaki pemain
     x, y = at(3, 8)
-    pg.mouse.move(x, y); pg.mouse.down(); pg.wait_for_timeout(250); pg.mouse.up(); pg.wait_for_timeout(300)
+    pg.mouse.move(x, y); pg.mouse.down(); pg.wait_for_timeout(330)
+    pg.screenshot(path=f"{out}/e2e_cracked.png")
+    pg.wait_for_timeout(450); pg.mouse.up(); pg.wait_for_timeout(300)
     check(any(l.startswith("punch:3,8") for l in server_log()), "pukul terkirim ke server")
     pg.screenshot(path=f"{out}/e2e_after_punch.png")
 

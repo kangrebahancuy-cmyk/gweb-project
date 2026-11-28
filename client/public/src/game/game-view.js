@@ -7,6 +7,7 @@ import { ACTION } from "./items.js";
 import { TILE_FLAG } from "./world-data.js";
 import { frameIndex, framePos } from "./tile-frame.js";
 import { PlayerSprites } from "./player-sprite.js";
+import { crackFrame, rawRGB, treeGrowth, TREE_SHEET, tileLabel } from "./tile-effects.js";
 
 const TILE = 32;
 const REACH = 4; // jarak pukul/pasang dalam tile (server tetap memeriksa sendiri)
@@ -39,6 +40,7 @@ export class GameView {
     this.cam = { x: 0, y: 0 };
     this.mouse = { x: 0, y: 0, tx: 0, ty: 0, left: false, right: false };
     this.textures = new Map(); // nama file -> {state, bmp}
+    this.tints = new Map();
     this.lastSend = 0;
     this.lastSent = null;
     this.lastAct = 0;
@@ -255,6 +257,75 @@ export class GameView {
     return t.state === "ok" ? t.bmp : null;
   }
 
+  /** Potongan sel atlas yang diwarnai (perkalian) dengan warna mentah 0xBBGGRRAA; di-cache. */
+  _tinted(name, sx, sy, size, raw) {
+    const bmp = this._texture(name);
+    if (!bmp) return null;
+    const key = `${name}:${sx},${sy}:${size}:${raw}`;
+    let c = this.tints.get(key);
+    if (c) return c;
+    c = document.createElement("canvas");
+    c.width = c.height = size;
+    const x = c.getContext("2d");
+    x.drawImage(bmp, sx, sy, size, size, 0, 0, size, size);
+    const { r, g, b } = rawRGB(raw);
+    x.globalCompositeOperation = "multiply";
+    x.fillStyle = `rgb(${r},${g},${b})`;
+    x.fillRect(0, 0, size, size);
+    x.globalCompositeOperation = "destination-in";
+    x.drawImage(bmp, sx, sy, size, size, 0, 0, size, size);
+    this.tints.set(key, c);
+    return c;
+  }
+
+  /** Pohon: batang (baris 19) dan daun (baris 18) dari tiles_page1, diwarnai seedColor dan seedOverlayColor. */
+  _drawTree(ctx, it, extra, dx, dy) {
+    const age = extra?.type === 4 ? extra.age : 0;
+    const gr = treeGrowth(age, it.growTime);
+    const trunk = this._tinted(TREE_SHEET.file, it.treeBase * TILE, TREE_SHEET.trunkRow * TILE, TILE, it.seedColor);
+    const leaves = this._tinted(TREE_SHEET.file, it.treeLeaves * TILE, TREE_SHEET.leavesRow * TILE, TILE, it.seedOverlayColor);
+    if (!trunk || !leaves) {
+      ctx.fillStyle = "#4caf50";
+      ctx.fillRect(dx + 8, dy + 8, 16, 24);
+      return;
+    }
+    const sz = Math.round(TILE * gr.scale);
+    const ox = dx + Math.round((TILE - sz) / 2);
+    const oy = dy + TILE - sz; // berpijak di dasar tile
+    ctx.drawImage(trunk, ox, oy, sz, sz);
+    ctx.drawImage(leaves, ox, oy, sz, sz);
+    if (gr.ready) {
+      const n = Math.max(1, Math.min(4, extra?.type === 4 ? extra.fruit : 1));
+      const fruitId = it.id - 1; // seed = blok + 1
+      for (let i = 0; i < n; i++) {
+        this._drawItemScaled(ctx, fruitId, dx + 2 + (i % 2) * 14, dy + 4 + Math.floor(i / 2) * 10, 12);
+      }
+    }
+  }
+
+  _drawItemScaled(ctx, id, dx, dy, size) {
+    const it = this.s.items?.get(id);
+    const bmp = it ? this._texture(it.texture) : null;
+    if (!bmp) return;
+    const { col, row } = framePos(it, 0);
+    ctx.drawImage(bmp, col * TILE, row * TILE, TILE, TILE, dx, dy, size, size);
+  }
+
+  /** Teks kecil berkontur di tengah tile (label pintu dan papan). */
+  _label(ctx, text, dx, dy) {
+    const s = tileLabel(text);
+    if (!s) return;
+    ctx.save();
+    ctx.font = "bold 9px system-ui";
+    ctx.textAlign = "center";
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(0,0,0,.85)";
+    ctx.strokeText(s, dx + TILE / 2, dy + TILE / 2 + 3);
+    ctx.fillStyle = "#fff";
+    ctx.fillText(s, dx + TILE / 2, dy + TILE / 2 + 3);
+    ctx.restore();
+  }
+
   /** Frame tile sesuai tetangga sejenis di lapisan yang sama. */
   _frame(it, layer, x, y) {
     const w = this.s.world;
@@ -316,17 +387,21 @@ export class GameView {
         if (!fg) continue;
         const dx = x * TILE - cx;
         const dy = y * TILE - cy;
-        if (w.flags[i] & TILE_FLAG.SEED && fg % 2 === 1) {
-          ctx.fillStyle = "#4caf50"; // pohon: render khusus belum dibuat
-          ctx.fillRect(dx + 8, dy + 8, 16, 24);
+        const it = s.items?.get(fg);
+        const extra = w.extras.get(i);
+        if (it && it.type === ACTION.SEED) {
+          this._drawTree(ctx, it, extra, dx, dy);
         } else {
           this._drawItem(ctx, fg, dx, dy, "fg", x, y);
+          if (extra && (extra.type === 1 || extra.type === 2) && extra.label) this._label(ctx, extra.label, dx, dy);
         }
         const d = s.damage.get(i);
-        if (d) {
-          const age = Date.now() - d.at;
-          if (age < 4000) {
-            ctx.fillStyle = `rgba(0,0,0,${Math.min(0.6, 0.15 + d.amount * 0.05)})`;
+        if (d && Date.now() - d.at < d.resetMs) {
+          const crack = this._texture("crack.rttex");
+          const f = crackFrame(d.hits, d.breakHits);
+          if (crack) ctx.drawImage(crack, f * TILE, 0, TILE, TILE, dx, dy, TILE, TILE);
+          else {
+            ctx.fillStyle = `rgba(0,0,0,${0.15 + 0.15 * f})`;
             ctx.fillRect(dx + 4, dy + 4, TILE - 8, TILE - 8);
           }
         }

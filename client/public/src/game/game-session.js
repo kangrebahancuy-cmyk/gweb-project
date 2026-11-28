@@ -16,6 +16,7 @@
 import { TANK_TYPE, TANK_FLAGS, PACKET_TYPE, buildText, encodeText, encodeTank, parseCall, parseText } from "../protocol/packets.js";
 import { ItemDB, parseItemsDat, inflateZlib, ACTION } from "./items.js";
 import { parseWorld, tileIndex, TILE_FLAG } from "./world-data.js";
+import { PUNCH_DAMAGE } from "./tile-effects.js";
 
 export const ITEM_FIST = 18;
 export const ITEM_WRENCH = 32;
@@ -313,7 +314,13 @@ export class GameSession {
     if (!w) return;
     const idx = tileIndex(w, t.tileX, t.tileY);
     if (idx < 0) return;
-    this.damage.set(idx, { amount: t.itemID, at: Date.now() });
+    // server mengirim damage per pukulan (6 = satu pukulan); retak menumpuk sampai tile tidak dipukul selama resetStateAfter
+    const it = this.items?.get(w.fg[idx] || w.bg[idx]);
+    const resetMs = (it?.resetStateAfter > 0 ? it.resetStateAfter : 4) * 1000;
+    const now = Date.now();
+    const prev = this.damage.get(idx);
+    const hits = (prev && now - prev.at < prev.resetMs ? prev.hits : 0) + t.itemID / PUNCH_DAMAGE;
+    this.damage.set(idx, { hits, at: now, resetMs, breakHits: it?.breakHits > 0 ? it.breakHits : 1 });
     this._emit("damage", { x: t.tileX, y: t.tileY, netID: t.netID });
   }
 

@@ -14,6 +14,10 @@ const itemsZ = new Uint8Array(deflateSync(itemsRaw));
 
 const W = 20, H = 12;
 const fg = new Uint16Array(W * H), bg = new Uint16Array(W * H);
+const extras = new Map<number, number[]>(); // indeks tile -> [tipe, ...payload]
+const hitsOn = new Map<number, number>();
+const enc = (str: string) => [str.length & 255, str.length >> 8, ...Buffer.from(str)];
+const u32b = (v: number) => [v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >>> 24) & 255];
 for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
   const i = y * W + x;
   if (y === H - 1) fg[i] = 8; else if (y >= 8) fg[i] = 2; else bg[i] = 14;
@@ -26,12 +30,16 @@ fg[7 * W + 17] = 992; fg[6 * W + 17] = 992; fg[5 * W + 17] = 992;
 fg[7 * W + 2] = 4; fg[7 * W + 3] = 4; fg[8 * W + 3] = 4;
 fg[4 * W + 3] = 2;
 fg[7 * W + 0] = 6;
+// pohon (seed) dengan umur berbeda, pintu dan papan berlabel
+for (const [x, id, age, fruit] of [[11, 3, 0, 0], [12, 11, 20, 0], [13, 101, 100000, 3], [4, 5, 100000, 2]]) { fg[7 * W + x] = id; extras.set(7 * W + x, [4, ...u32b(age), fruit]); }
+fg[7 * W + 5] = 12; extras.set(7 * W + 5, [1, ...enc("START"), 0]);
+fg[7 * W + 1] = 20; extras.set(7 * W + 1, [2, ...enc("Halo!"), ...u32b(0xffffffff)]);
 
 function mapBytes() {
   const o: number[] = [];
   const u8 = (v: number) => o.push(v & 255), u16 = (v: number) => { u8(v); u8(v >> 8); }, u32 = (v: number) => { u16(v & 0xffff); u16(v >>> 16); };
   u16(0x19); u32(0x40); u16(5); o.push(...Buffer.from("START")); u32(W); u32(H); u32(W * H); o.push(0, 0, 0, 0, 0);
-  for (let i = 0; i < W * H; i++) { u16(fg[i]); u16(bg[i]); u16(0); u16(0); }
+  for (let i = 0; i < W * H; i++) { const ex = extras.get(i); u16(fg[i]); u16(bg[i]); u16(0); u16(ex ? (fg[i] % 2 === 1 && fg[i] > 2 ? 0x11 : 1) : 0); if (ex) o.push(...ex); }
   o.push(...new Array(12).fill(0)); u32(0); u32(0); u16(0); u16(0); u16(0); o.push(0, 0, 0, 0, 0, 0);
   return new Uint8Array(o);
 }
@@ -110,6 +118,9 @@ function onTank(ws: any, t: any) {
     log.push(`punch:${t.tileX},${t.tileY}`);
     if (!fg[i] || fg[i] === 8) return;
     ws.send(encodeTank({ type: TANK_TYPE.TILE_APPLY_DAMAGE, netID: 1, itemID: 6, tileX: t.tileX, tileY: t.tileY }));
+    const h = (hitsOn.get(i) ?? 0) + 1; hitsOn.set(i, h);
+    if (h < 4) return;
+    hitsOn.delete(i); extras.delete(i);
     fg[i] = 0;
     ws.send(encodeTank({ type: TANK_TYPE.TILE_CHANGE_REQUEST, netID: 1, itemID: 18, buildRange: 18, tileX: t.tileX, tileY: t.tileY }));
     ws.send(encodeTank({ type: TANK_TYPE.SEND_TILE_UPDATE_DATA, tileX: t.tileX, tileY: t.tileY, extraData: tileBytes(0, bg[i]) }));
